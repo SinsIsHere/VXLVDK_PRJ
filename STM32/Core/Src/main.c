@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#define NORMAL_STATE GPIO_PIN_SET
+#define PRESSED_STATE GPIO_PIN_RESET
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,17 +72,47 @@ void timerRun() {
 	}
 }
 
+//********************************************************************************************//
+int KeyGen0 = NORMAL_STATE;
+int KeyGen1 = NORMAL_STATE;
+int KeyGen2 = NORMAL_STATE;
+int KeyGen3 = NORMAL_STATE;
 
+int BUTTON_flag = 0;
 
+int BUTTON_PRESSED() {
+	if (BUTTON_flag == 1) {
+		//BUTTON_flag = 0;
+		return 1;
+	}
+	return 0;
+}
+
+void getKeyInput() {
+	KeyGen0 = KeyGen1;
+	KeyGen1 = KeyGen2;
+	KeyGen2 = HAL_GPIO_ReadPin(BUTTON_GPIO_Port, BUTTON_Pin);
+
+	if ((KeyGen0 == KeyGen1) && (KeyGen1 == KeyGen2)) {
+		if (KeyGen3 != KeyGen2) {
+			KeyGen3 = KeyGen2;
+			if (KeyGen2 == NORMAL_STATE) {
+				//TODO
+				BUTTON_flag = 1;
+			}
+		}
+	}
+}
+
+//********************************************************************************************//
 
 
 int fsm_status = 0;
-int counter_0 = 0;
-int counter_1 = 0;
+int counter = 0;
 int red_length = 5;
 int yellow_length = 2;
 int green_length = 3;
-int total_length = 10
+int total_length = 10;
 
 
 
@@ -90,11 +121,11 @@ int total_length = 10
 
 
 void fsm_run() {
-	setTimer0(100);
 	switch (fsm_status) {
 		case 0:
-			counter_0 = total_length;
-			counter_1 = total_length;
+			setTimer0(10);
+			counter = total_length;
+			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, 1);
 			HAL_GPIO_WritePin(LED_RED_0_GPIO_Port, LED_RED_0_Pin, 1);
 			HAL_GPIO_WritePin(LED_YELLOW_0_GPIO_Port, LED_YELLOW_0_Pin, 1);
 			HAL_GPIO_WritePin(LED_GREEN_0_GPIO_Port, LED_GREEN_0_Pin, 1);
@@ -108,16 +139,17 @@ void fsm_run() {
 			fsm_status = 1;
 			break;
 		case 1:
-			if (green_length + yellow_length < counter_0 && counter_0 <= total_length) {
+			if (green_length + yellow_length < counter && counter <= total_length) {
 				HAL_GPIO_WritePin(LED_RED_0_GPIO_Port, LED_RED_0_Pin, 0);
 				HAL_GPIO_WritePin(LED_YELLOW_0_GPIO_Port, LED_YELLOW_0_Pin, 1);
 				HAL_GPIO_WritePin(LED_GREEN_0_GPIO_Port, LED_GREEN_0_Pin, 1);
 				HAL_GPIO_WritePin(PED_RED_0_GPIO_Port, PED_RED_0_Pin, 1);
 				HAL_GPIO_WritePin(PED_GREEN_0_GPIO_Port, PED_GREEN_0_Pin, 0);
+				if (BUTTON_PRESSED() == 1) HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, 0);
 				//counter_0--;
 			}
 
-			if (red_length + yellow_length < counter_1 && counter_1 <= total_length) {
+			if (red_length + yellow_length < counter && counter <= total_length) {
 				HAL_GPIO_WritePin(LED_RED_1_GPIO_Port, LED_RED_1_Pin, 1);
 				HAL_GPIO_WritePin(LED_YELLOW_1_GPIO_Port, LED_YELLOW_1_Pin, 1);
 				HAL_GPIO_WritePin(LED_GREEN_1_GPIO_Port, LED_GREEN_1_Pin, 0);
@@ -126,7 +158,7 @@ void fsm_run() {
 				//counter_1--;
 			}
 
-			if (red_length < counter_1 && counter_1 <= total_length - green_length) {
+			if (red_length < counter && counter <= total_length - green_length) {
 				HAL_GPIO_WritePin(LED_RED_1_GPIO_Port, LED_RED_1_Pin, 1);
 				HAL_GPIO_WritePin(LED_YELLOW_1_GPIO_Port, LED_YELLOW_1_Pin, 0);
 				HAL_GPIO_WritePin(LED_GREEN_1_GPIO_Port, LED_GREEN_1_Pin, 1);
@@ -135,15 +167,15 @@ void fsm_run() {
 				//counter_1--;
 			}
 
-			if (counter_0 == green_length + yellow_length) {
-				fsm_status = 2;
-				break;
+			if (timer0_flag == 1) {
+				counter--;
+				setTimer0(1000);
 			}
 
-			if (timer0_flag == 1) {
-				counter_0--;
-				counter_1--;
-				setTimer0(1000);
+			if (counter == green_length + yellow_length) {
+				fsm_status = 2;
+				BUTTON_flag = 0;
+				break;
 			}
 
 			fsm_status = 1;
@@ -151,25 +183,27 @@ void fsm_run() {
 			break;
 
 		case 2:
-			if (yellow_length < counter_0 && counter_0 <= green_length + yellow_length) {
+			if (yellow_length < counter && counter <= green_length + yellow_length) {
 				HAL_GPIO_WritePin(LED_RED_0_GPIO_Port, LED_RED_0_Pin, 1);
 				HAL_GPIO_WritePin(LED_YELLOW_0_GPIO_Port, LED_YELLOW_0_Pin, 1);
 				HAL_GPIO_WritePin(LED_GREEN_0_GPIO_Port, LED_GREEN_0_Pin, 0);
 				HAL_GPIO_WritePin(PED_RED_0_GPIO_Port, PED_RED_0_Pin, 0);
 				HAL_GPIO_WritePin(PED_GREEN_0_GPIO_Port, PED_GREEN_0_Pin, 1);
+				if (BUTTON_PRESSED() == 0) HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, 1);
 				//counter_0--;
 			}
 
-			if (0 < counter_0 && counter_0 <= yellow_length) {
+			if (0 < counter && counter <= yellow_length) {
 				HAL_GPIO_WritePin(LED_RED_0_GPIO_Port, LED_RED_0_Pin, 1);
 				HAL_GPIO_WritePin(LED_YELLOW_0_GPIO_Port, LED_YELLOW_0_Pin, 0);
 				HAL_GPIO_WritePin(LED_GREEN_0_GPIO_Port, LED_GREEN_0_Pin, 1);
 				HAL_GPIO_WritePin(PED_RED_0_GPIO_Port, PED_RED_0_Pin, 0);
 				HAL_GPIO_WritePin(PED_GREEN_0_GPIO_Port, PED_GREEN_0_Pin, 1);
+				if (BUTTON_PRESSED() == 0) HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, 1);
 				//counter_0--;
 			}
 
-			if (0 < counter_1 && counter_1 <= red_length) {
+			if (0 < counter && counter <= red_length) {
 				HAL_GPIO_WritePin(LED_RED_1_GPIO_Port, LED_RED_1_Pin, 0);
 				HAL_GPIO_WritePin(LED_YELLOW_1_GPIO_Port, LED_YELLOW_1_Pin, 1);
 				HAL_GPIO_WritePin(LED_GREEN_1_GPIO_Port, LED_GREEN_1_Pin, 1);
@@ -178,18 +212,24 @@ void fsm_run() {
 				//counter_1--;
 			}
 
-			if (counter_0 == 0) {
+			if (timer0_flag == 1) {
+				counter--;
+				setTimer0(1000);
+			}
+
+			if (counter == 0) {
 				fsm_status = 0;
 				break;
 			}
 
-			if (timer0_flag == 1) {
-				counter_0--;
-				counter_1--;
-				setTimer0(1000);
-			}
+			/*if (//buttonpressed) {
+			 * fsm_status = 3;
+			 * setTimer0()
+			 * }*/
+
 			fsm_status = 2;
 			break;
+
 		default:
 			break;
 	}
@@ -226,13 +266,15 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_TIM_Base_Start_IT(&htim2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+	  fsm_run();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -330,21 +372,28 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, LED_RED_0_Pin|LED_YELLOW_0_Pin|LED_GREEN_0_Pin|PED_RED_0_Pin
-                          |PED_GREEN_0_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LED_RED_0_Pin|LED_YELLOW_0_Pin|LED_GREEN_0_Pin|LED_RED_Pin
+                          |PED_RED_0_Pin|PED_GREEN_0_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LED_RED_1_Pin|LED_YELLOW_1_Pin|LED_GREEN_1_Pin|PED_RED_1_Pin
                           |PED_GREEN_1_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : LED_RED_0_Pin LED_YELLOW_0_Pin LED_GREEN_0_Pin PED_RED_0_Pin
-                           PED_GREEN_0_Pin */
-  GPIO_InitStruct.Pin = LED_RED_0_Pin|LED_YELLOW_0_Pin|LED_GREEN_0_Pin|PED_RED_0_Pin
-                          |PED_GREEN_0_Pin;
+  /*Configure GPIO pin : BUTTON_Pin */
+  GPIO_InitStruct.Pin = BUTTON_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(BUTTON_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : LED_RED_0_Pin LED_YELLOW_0_Pin LED_GREEN_0_Pin LED_RED_Pin
+                           PED_RED_0_Pin PED_GREEN_0_Pin */
+  GPIO_InitStruct.Pin = LED_RED_0_Pin|LED_YELLOW_0_Pin|LED_GREEN_0_Pin|LED_RED_Pin
+                          |PED_RED_0_Pin|PED_GREEN_0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -362,7 +411,10 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	getKeyInput();
+	timerRun();
+}
 /* USER CODE END 4 */
 
 /**
